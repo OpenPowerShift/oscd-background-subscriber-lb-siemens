@@ -1,23 +1,50 @@
 name: Test
-on: push
+on:
+  # main is tested by release.yml, which calls this workflow and only releases
+  # when it passes
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+  workflow_call:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  unit:
+    name: Lint and unit tests
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '22'
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Install playwright browsers
-        run: npx playwright install --with-deps
+      - name: Lint
+        run: npm run lint
 
-      - name: Run tests
-        run: npm run-script test
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run unit tests with coverage
+        run: npm test
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/lcov-report
+          retention-days: 7
+          if-no-files-found: ignore
