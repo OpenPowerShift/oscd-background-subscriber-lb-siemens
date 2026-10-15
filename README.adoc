@@ -1,306 +1,165 @@
-= OpenSCD Plugin: {plugin-name} Editor
+= OpenSCD Plugin: {plugin-name}
 :plugin-name: Subscriber Later Binding - Siemens
 :sectnums:
 :sectlinks:
 :toc:
-:imagesdir: docs/media
 :icons: font
 :experimental:
-:uri-action-translate-ci-bundle: https://jakobvogelsang.github.io/oscd-action-translate/oscd-action-translate.js
-:uri-openscd-core: https://github.com/openscd/open-scd-core#readme
-:uri-openscd: https://github.com/openscd
-:uri-openscd-app: https://openscd.github.io
-:uri-openscd-core-app: https://openscd.github.io/open-scd/
-:uri-openscd-core-plugin: pass:v[https://openscd.github.io/open-scd/?plugins=%7B%22menu%22:%5B%7B%22name%22:%22Open%20File%22,%22translations%22:%7B%22de%22:%22Datei%20%C3%B6ffnen%22%7D,%22icon%22:%22folder_open%22,%22active%22:true,%22src%22:%22https://openscd.github.io/oscd-open/oscd-open.js%22%7D,%7B%22name%22:%22Save%20File%22,%22translations%22:%7B%22de%22:%22Datei%20speichern%22%7D,%22icon%22:%22save%22,%22active%22:true,%22src%22:%22https://openscd.github.io/oscd-save/oscd-save.js%22%7D,%7B%22name%22:%22Communications%20Export%22,%22translations%22:%7B%22de%22:%22Kommunikationsexport%22,%22pt%22:%22Exporta%C3%A7%C3%A3o%20de%20Comunica%C3%A7%C3%B5es%22%7D,%22icon%22:%22sim_card_download%22,%22active%22:true,%22requireDoc%22:true,%22src%22:%22/dist/oscd-subscriber-lb-siemens.js%22%7D%5D,%22editor%22:%5B%5D%7D]
-// TIP:
-// the above URI is done by taking the plugins object from demo.html (without strings) and updating to the correct {uri-ci-bundle} value and then in the browser calling:
-// console.log(`https://openscd.github.io/open-scd/?plugins=${encodeURI(JSON.stringify(plugins))}`)
-// then substitute the value within the pass:v[<url>]
-:uri-openwc: https://github.com/open-wc/open-wc
-:uri-plugin: https://github.com/danyill/oscd-subscriber-lb-siemens
-:uri-ci-bundle: https://danyill.github.io/oscd-subscriber-lb-siemens/oscd-subscriber-lb-siemens.js
-:uri-material-icons: https://fonts.google.com/icons
-:uri-openscd-core-plugin-demo: https://danyill.github.io/oscd-subscriber-lb-siemens/index.deploy.html
-:source-highlighter: highlight.js
+:uri-plugin: https://github.com/OpenPowerShift/oscd-background-subscriber-lb-siemens
+:uri-later-binding: https://github.com/OpenPowerShift/oscd-editor-subscriber-later-binding
+:uri-later-binding-companions: https://github.com/OpenPowerShift/oscd-editor-subscriber-later-binding/blob/main/modules/ROOT/pages/development.adoc#companionPlugins
+:uri-shell: https://github.com/OMICRONEnergyOSS/oscd-shell
+:uri-tooling: https://github.com/OMICRONEnergyOSS/oscd-tooling
+:uri-ci-bundle: https://openpowershift.github.io/oscd-background-subscriber-lb-siemens/oscd-background-subscriber-lb-siemens.js
+:uri-demo: https://openpowershift.github.io/oscd-background-subscriber-lb-siemens/demo/
 
 == What is this?
 
-This plugin is intended to allow a user to achieve certain improvements with the later binding subscriber:
+A companion plugin for the {uri-later-binding}[Subscriber Later Binding] plugin of OpenSCD.
+It is a background plugin with no user interface of its own.
+When you subscribe or unsubscribe an input of a Siemens SIPROTEC 5 relay in Subscriber Later Binding, it subscribes or unsubscribes the inputs that belong with it:
 
-* Simultaneous subscriptions of quality together with other items for GOOSE and SV
-* Simultaneous subscriptions of multiple phases for SV 
+* *Values and their quality*: the input for the quality of a value is subscribed to the quality of the same data.
+* *Sampled values*: the quality of the chosen phase, and the value and quality of the following phases, including the neutral, are subscribed to the matching phases of the stream.
 
-* This is a plugin for {uri-openscd-core}[open-scd-core], the core
-editor engine for {uri-openscd}[OpenSCD].
+Everything happens as part of the same user action, so one undo reverses all of it.
 
-* This plugin is a web component and follows the
-{uri-openwc}[open-wc] recommendations.
+{uri-demo}[Try it out online].
 
-* This plugin uses the link:LICENSE[Apache License] and is intended for you to use, study, share and improve.
-
-{uri-openscd-core-plugin-demo}[Try it out online]!
-
-Feel free to log issues to request fixes, improvements or new features.
+(C) 2026 OpenPowerShift
 
 == How it works
 
-. This plugin does only two things:
+The plugin acts only on inputs of IEDs whose `manufacturer` is exactly `SIEMENS`.
+It never overwrites:
 
-* If two adjacent `ExtRef` elements have the same intAddr except there is a `q` then if in the subscribing dataset the adjacent FCDA elements are the same except the second is a quality attribute, then the quality will be automatically subscribed/unsubscribed.
+* It subscribes only inputs that have no subscription, or part of one.
+* It unsubscribes only inputs that are subscribed to the data it would have subscribed them to.
 
-* For Sampled Values, a set of up to 4 TCTR or TVTR data attributes will be subscribed to associated ExtRef elements. For example the following:
-+
-[source,xml]
-----
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="1" doName="AmpSv" daName="instMag.i" fc="MX" />
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="1" doName="AmpSv" daName="q" fc="MX" />
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="2" doName="AmpSv" daName="instMag.i" fc="MX" />
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="2" doName="AmpSv" daName="q" fc="MX" />
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="3" doName="AmpSv" daName="instMag.i" fc="MX" />
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="3" doName="AmpSv" daName="q" fc="MX" />
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="4" doName="AmpSv" daName="instMag.i" fc="MX" />
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="4" doName="AmpSv" daName="q" fc="MX" />
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="1" doName="AmpSv" daName="instMag.i" fc="MX" />
-  <FCDA ldInst="PowS_PhaseCT" prefix="" lnClass="TCTR" lnInst="1" doName="AmpSv" daName="q" fc="MX" />
-----
-+
-Can be subscribed to a group of ExtRefs as shown:
-+
-[source,xml]
-----
-<LDevice desc="PowS_BAY240MUCT" inst="PowS_CT242">
-	<LN prefix="" lnClass="TCTR" inst="1" lnType="SIPROTEC5_LNType_TCTR" desc="CT 1">
-		<ExtRef desc="PowS_BAY240MUCT.CT 1" intAddr="AmpSv;TCTR/AmpSv/instMag.i" serviceType="SMV" pServT="SMV" pLN="TCTR" pDO="AmpSv" pDA="instMag.i"/>
-		<ExtRef desc="PowS_BAY240MUCT.CT 1" intAddr="AmpSv;TCTR/AmpSv/q" serviceType="SMV" pServT="SMV" pLN="TCTR" pDO="AmpSv" pDA="q" />
-	</Inputs>
-</LN>
-<LN prefix="" lnClass="TCTR" inst="2" lnType="SIPROTEC5_LNType_TCTR" desc="CT 2">
-	<Inputs>
-		<ExtRef desc="PowS_BAY240MUCT.CT 2" intAddr="AmpSv;TCTR/AmpSv/instMag.i" serviceType="SMV" pServT="SMV" pLN="TCTR" pDO="AmpSv" pDA="instMag.i" />
-		<ExtRef desc="PowS_BAY240MUCT.CT 2" intAddr="AmpSv;TCTR/AmpSv/q" serviceType="SMV" pServT="SMV" pLN="TCTR" pDO="AmpSv" pDA="q" />
-	</Inputs>
-</LN>
-<LN prefix="" lnClass="TCTR" inst="3" lnType="SIPROTEC5_LNType_TCTR" desc="CT 3">
-	<Inputs>
-		<ExtRef desc="PowS_BAY240MUCT.CT 3" intAddr="AmpSv;TCTR/AmpSv/instMag.i" serviceType="SMV" pServT="SMV" pLN="TCTR" pDO="AmpSv" pDA="instMag.i" />
-		<ExtRef desc="PowS_BAY240MUCT.CT 3" intAddr="AmpSv;TCTR/AmpSv/q" serviceType="SMV" pServT="SMV" pLN="TCTR" pDO="AmpSv" pDA="q" />
-	</Inputs>
-</LN>
-<LN prefix="" lnClass="TCTR" inst="4" lnType="SIPROTEC5_LNType_TCTR" desc="CT 4">
-	<Inputs>
-		<ExtRef desc="PowS_BAY240MUCT.CT 4" intAddr="AmpSv;TCTR/AmpSv/instMag.i" serviceType="SMV" pServT="SMV" pLN="TCTR" pDO="AmpSv" pDA="instMag.i" />
-		<ExtRef desc="PowS_BAY240MUCT.CT 4" intAddr="AmpSv;TCTR/AmpSv/q" serviceType="SMV" pServT="SMV" pLN="TCTR" pDO="AmpSv" pDA="q" />
-	</Inputs>
-</LN>
-</LDevice>
-----
+SIPROTEC 5 internal addresses have the form `name;lnClass/dataObject/dataAttribute`, e.g. `RxPos1;/Pos/stVal` or `AmpSv;TCTR/AmpSv/instMag.i`.
 
-== Using the Plugin
+=== Values and their quality
 
-Follow the steps in <<Loading the Plugin>>.
-Once the plugin is loaded:
+When an input is subscribed to an FCDA that is not itself a quality, the plugin looks for:
 
-. The plugin provides a menu option. Go to the menu in the top left and click on the plugin name.
+* the input for the quality, in the same logical node, with the same name, logical node class and data object, and the data attribute `q`, e.g. `RxPos1;/Pos/q`;
+* the quality FCDA of the same data, in the same data set.
 
-. Then click enabled and then "Close".
-+
-image::../../test/screenshots/baseline/configure the plugin is initially disabled-Chromium.png[]
+If it finds both, the quality input is subscribed to the quality FCDA.
 
-. In either the publisher or subscriber view, click on the settings icon (a cog) and check that "Allow External Plugins" is checked.
+=== Sampled values
 
-. The plugin will automatic add or remove subscriptions as required.
+When an input is subscribed to an FCDA, the plugin looks for the phases of the stream that start at that FCDA.
+Each phase is a measured value followed by its quality `q`, in the same logical device, logical node class and data object, with the logical node instance not decreasing.
+SIPROTEC 5 relays take four phases: A, B, C and the neutral.
 
-== Loading the Plugin
+In a SIPROTEC 5 relay each phase is a logical node with an input for the value and one for its quality, in the order of the stream.
+Starting at the chosen input, the inputs of its logical device are bound in order to the FCDAs of the stream.
+Each input must have the internal address and logical node class of its FCDA, e.g. `AmpSv;TCTR/AmpSv/q` for `TCTR2.AmpSv.q`.
+The first input that does not stops the mapping, so a missing input cannot shift the phases.
 
-=== Online Using the Latest open-scd-core
+A phase with an input that is already subscribed is left as it is, so the value and quality of a phase stay together.
 
-==== Using a URL
+== Using the plugin
 
-Open SCD core allows plugins to be loaded from a URL.
+. Load the plugin as a background plugin, together with the Subscriber Later Binding editor plugin.
+. Open the settings of Subscriber Later Binding (the cog in either view).
+.. _Siemens companion plugin_ is listed with what it does.
+It is on unless you turn it off; Subscriber Later Binding remembers the choice.
+.. _Allow External Plugins_ must also be on (the default).
+It lists the active companion plugins, and the settings button shows how many there are.
+. Subscribe and unsubscribe as usual.
+The plugin adds its subscriptions to the same action, so one undo reverses everything.
 
-You can click on {uri-openscd-core-plugin}[this link] to trial this plugin.
+== Loading the plugin
 
-In this view it is without theming and only presents this plugin along with the open and save plugins.
+The plugin works with {uri-shell}[`oscd-shell`] and other hosts that implement the OpenSCD plugin API.
+It is a background plugin whose module's default export is the plugin class.
+It needs a document, so it is listed with `requireDoc: true`.
 
-==== Manually
+The latest build from `main` is at {uri-ci-bundle}.
+In an `oscd-shell` `plugins` object:
 
-. The latest core is available at {uri-openscd-core-app}.
-
-. Go to menu:Menu[Add plugins...]
-
-. Select Cancel - this is an editor plugin.
-
-. Select OK to required a loaded document.
-
-. Choose a plugin name of '{plugin-name}'.
-
-. Choose a plugin icon of 'link'
-
-. Provide a plugin source URI of: {uri-ci-bundle}
-
-. Click OK on the summary, it should indicate the parameters previously entered.
-
-. Open a file and enjoy!
-
-=== Locally for testing
-
-. Clone this project:
-+
-[subs=+attributes]
-....
-$ git clone {uri-plugin}
-....
-
-. Install dependencies
-
-  $ npm i
-
-. Start up a demo server 
-
-  $ npm run start
-
-. Open in your browser locally at http://localhost:8000/demo/
-
-=== As part of the OpenSCD distribution
-
-TIP: OpenSCD is transitioning to use of `open-scd-core`, these instructions will require updating at the end of this transition.
-
-. Open your OpenSCD distribution or use {uri-openscd-app}.
-
-. Create a custom extension by going to menu:menu[Extensions>Add Custom Extension].
-
-. Enter the name '{plugin-name}', select 'Menu entry' and enter {uri-ci-bundle} as the URL.
-+
-This is the URL of the bundle built by CI and is always the latest pre-release version of this plugin.
-+
-.OpenSCD Add Custom Extension Screen
-image::screenshot-add-extension.png[width=300]
-
-. Click on menu:Add[].
-
-. This plugin is now available in the menu entry.
-
-=== As part of your own distribution
-
-==== Within the current OpenSCD distribution
-
-. Within the current OpenSCD distribution, plugins are stored in the `public/js/plugins.js` folder. 
-Each plugin appears in the following form:
-+
 [source,js,subs=+attributes]
 ----
 {
-    name: '{plugin-name}', // <.>
-    src: '{uri-ci-bundle}', //  <.>
-    icon: 'sim_card_download', // <.>
-    default: true, // <.>
-    kind: 'menu', // <.>
-    requireDoc: true, // <.>
-    position: 'middle' // <.>
-  }
-----
-<.> Name of the plugin which appears in the editor menu at top of screen
-<.> URL which can be a local or remote resource. 
-For a local resource, begins without a forward slash, e.g. `plugins/oscd-subscriber-lb-siemens/dist/oscd-subscriber-lb-siemens.js`. 
-In this case what is shown is loading a plugin from the build process.
-<.> A material icon, see others at {uri-material-icons}[Material Symbols and Icons]
-<.> Whether the plugin is enabled by default or has to be enabled in the plugins menu
-<.> The type of plugin, either `menu` or `editor`. This is an `editor` plugin.
-<.> Whether a document must be loaded for this plugin to be available
-<.> A string, either `top`, `middle` or `bottom` to give a location in the menu. 
-Otherwise inferred from the order in the file relative to other plugins.
-
-. You need to copy an entry like the above, ensure the `src` URL resolves and the plugin should be loaded when the distribution is built.
-
-. If you are building locally you likely need to run an `npm run bundle` command in each plugin to make the `dist` folder, containing a single JavaScript file with the plugin available to OpenSCD.
-
-==== Within an OpenSCD core distribution
-
-Within an OpenSCD core distribution, plugins are also loaded from a json file with a slightly different schema.
-
-. Typically the distribution will be served from a static web page and within the web page there will be a plugins property declared on an `open-scd` object, for instance:
-+
-[source,js,subs=+attributes]
-----
-include::demo/index.html[tag=plugins]
-----
-
-. This plugin is an editor plugin, editor plugins are an array of JSON of the following form:
-+
-[source,js,subs=+attributes]
-----
-{
-  "name": "{plugin-name}", // <.>
-  "translations": { // <.>
-    "de": "Kommunikationsexport", 
-    "pt":"Exportação de Comunicações"
-  },
-  "icon": "sim_card_download", // <.>
-  "active": true, // <.>
-  "requireDoc": true, // <.>
-  "src": "/dist/oscd-subscriber-lb-siemens.js" // <.>
+  background: [
+    {
+      name: '{plugin-name}',
+      translations: {
+        de: 'Späte Bindung des Abonnenten - Siemens',
+        pt: 'Associação Tardia de Assinante - Siemens'
+      },
+      icon: 'none',
+      requireDoc: true,
+      src: '{uri-ci-bundle}'
+    }
+  ]
 }
 ----
-<.> Name of the plugin which appears in the editor menu at top of screen
-<.> Translations of the plugin name as required using standard locale names.
-<.> A material icon, see others at {uri-material-icons}[Material Symbols and Icons]
-<.> Whether the plugin is enabled by default or has to be enabled in the plugins menu
-<.> Whether a document must be loaded for this plugin to be available
-<.> URL which can be a local or remote resource. 
-For a local resource, begins with a forward slash, e.g. `plugins/oscd-subscriber-lb-siemens/dist/oscd-subscriber-lb-siemens.js`. 
-In this case what is shown is loading a plugin from the internet using the continuous integration build process.
 
-. You need to copy an entry like the above, ensure the `src` URL resolves and the plugin should be loaded when the distribution is built.
-
-. If you are building locally you likely need to run an `npm run bundle` command in each plugin to make the `dist` folder, containing a single JavaScript file with the plugin available to OpenSCD.
+The package is also published to npm as `@openpowershift/oscd-background-subscriber-lb-siemens`.
 
 == Development
 
-=== Linting and formatting
+Build, lint, test and bundling use the shared `oscd` command from {uri-tooling}[`@omicronenergy/oscd-tooling`], through the npm scripts.
 
-To scan the project for linting and formatting errors, run
+ $ npm i
+ $ npm start
 
-[source,bash]
-----
-npm run lint
-----
+Then open http://localhost:8000/demo/.
+The port may differ if 8000 is in use; the server prints it.
 
-To automatically fix linting and formatting errors, run
+=== With a local Subscriber Later Binding plugin
 
-[source,bash]
-----
-npm run format
-----
+The demo loads Subscriber Later Binding in this order:
 
-=== Testing with Web Test Runner
+. from the URL given with `?laterBinding=<url>`,
+. from a linked local checkout, when served locally,
+. from its deployed site.
 
-To execute a single test run:
+To use a local checkout next to this one:
 
-[source,bash]
-----
-npm run test
-----
+ $ (cd ../oscd-editor-subscriber-later-binding && npm i && npm run bundle)
+ $ npm link ../oscd-editor-subscriber-later-binding
+ $ npm start
 
-To run the tests in interactive watch mode run:
+Run `npm run bundle` in the later binding checkout again after changing it.
+`npm link` does not change `package.json`, and a later `npm i` removes the link.
 
-[source,bash]
-----
-npm run test:watch
-----
+=== Companion plugins
 
-=== Tooling configs
+How companion plugins work with Subscriber Later Binding is described in its {uri-later-binding-companions}[development documentation].
+In short:
 
-For most of the tools, the configuration is in the `package.json` to reduce the number of files in your project.
+. When connected, and whenever Subscriber Later Binding asks, the plugin announces itself on `window` with its identity, name, description and features.
+Subscriber Later Binding lists it in its settings from this, and keeps whether the user turned it off.
+. After each subscription or unsubscription, Subscriber Later Binding tells companions on `window` what it did, with the identities of the companions that are turned on.
+. If this plugin is among them and the input belongs to its manufacturer, it works out its edits and hands them back through `apply`.
+Subscriber Later Binding applies them as part of the same undoable action.
 
-If you customize the configuration a lot, you can consider moving them to individual files.
+Companions never handle the host's edit events, and have no settings of their own.
 
-=== Local Demo with `web-dev-server`
+`src/companion/` is the part shared with the SEL and NR Electric companion plugins.
+`src/companion/protocol.ts` is a copy of the protocol in Subscriber Later Binding and must be kept identical to it.
+The Siemens rules are in `src/foundation/`.
+The specs of `src/companion/` use the SEL fixture, `test/fixtures/SEL_SV_and_GOOSE.scd`, so that the shared files are identical in each plugin.
 
-To run a local development server that serves the basic demo located in `demo/index.html`
+=== Testing
 
-[source,bash]
-----
-npm start
-----
+ $ npm test
 
-© 2023 Daniel Mulholland
+The specs (`*.spec.ts`) run in Chromium with Web Test Runner, with coverage thresholds.
+`src/testing/later-binding.ts` stands in for Subscriber Later Binding.
+It uses the same events and the same undo history as the host, so the specs check that a whole action undoes and redoes as one edit.
+
+The plugin has no user interface, so there are no screenshot tests.
+
+=== Translations
+
+Strings use `msg()` from `@lit/localize`.
+`npm run build` extracts them into `src/localization/*.xlf`, where German and Portuguese translations are kept.
+
+== License
+
+Apache License 2.0, see link:LICENSE[].

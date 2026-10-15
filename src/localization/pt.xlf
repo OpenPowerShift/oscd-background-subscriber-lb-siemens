@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file target-language="pt" source-language="en" original="lit-localize-inputs" datatype="plaintext">
+    <body>
+<trans-unit id="se597526d3ef30501">
+  <source>Siemens subscribe</source>
+  <target>Siemens assinar</target>
+</trans-unit>
+<trans-unit id="safd560e1ea86dbf8">
+  <source>Siemens unsubscribe</source>
+  <target>Siemens cancelar assinatura</target>
+</trans-unit>
+<trans-unit id="s7c791c2db787d572">
+  <source>Values: the input for their quality</source>
+  <target>Valores: a entrada da sua qualidade</target>
+</trans-unit>
+<trans-unit id="s0f855f4a6f4bfbf9">
+  <source>Sampled values: the other phases and the neutral</source>
+  <target>Valores amostrados: as outras fases e o neutro</target>
+</trans-unit>
+<trans-unit id="s221005d9a0fecae7">
+  <source>Subscribes and unsubscribes further inputs of Siemens SIPROTEC 5 relays</source>
+  <target>Assina e cancela a assinatura de outras entradas de relés Siemens SIPROTEC 5</target>
+</trans-unit>
+    </body>
+  </file>
+</xliff>
